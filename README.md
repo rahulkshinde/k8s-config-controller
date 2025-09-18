@@ -11,6 +11,101 @@ This controller demonstrates advanced Kubernetes operator patterns including:
 - Production-ready status management and observability
 - Proper RBAC and security practices
 
+## Architecture Diagram
+
+```mermaid
+graph TB
+    subgraph "Kubernetes Cluster"
+        CR[ConfigRollback CRD]
+        Controller[ConfigRollback Controller]
+        Service[Target Service]
+        Pods[Service Pods]
+    end
+    
+    subgraph "External Systems"
+        Prometheus[Prometheus Server]
+        ArgoCD[ArgoCD Server]
+        Webhook[Webhook Endpoint]
+        Lambda[AWS Lambda]
+    end
+    
+    subgraph "Health Check Flow"
+        CR --> Controller
+        Controller -->|1. Monitor| Service
+        Controller -->|2. HTTP Check| Pods
+        Controller -->|3. Metrics Query| Prometheus
+    end
+    
+    subgraph "Rollback Flow"
+        Controller -->|4a. Webhook Call| Webhook
+        Controller -->|4b. Function Invoke| Lambda
+        Controller -->|4c. App Sync| ArgoCD
+        ArgoCD -->|5. Deploy Previous Version| Service
+    end
+    
+    subgraph "Status Updates"
+        Controller -->|6. Update Status| CR
+        CR -->|7. Conditions & Events| Controller
+    end
+
+    classDef controller fill:#e1f5fe
+    classDef external fill:#fff3e0
+    classDef k8s fill:#f3e5f5
+    
+    class Controller controller
+    class Prometheus,ArgoCD,Webhook,Lambda external
+    class CR,Service,Pods k8s
+```
+
+## Controller Workflow
+
+```mermaid
+sequenceDiagram
+    participant CR as ConfigRollback
+    participant Ctrl as Controller
+    participant Svc as Target Service
+    participant Prom as Prometheus
+    participant ArgoCD as ArgoCD
+    
+    Note over CR,ArgoCD: Health Monitoring Phase
+    CR->>Ctrl: Reconcile Event
+    Ctrl->>Svc: HTTP Health Check
+    Svc-->>Ctrl: Response (200/500)
+    Ctrl->>Prom: Query Metrics (Optional)
+    Prom-->>Ctrl: Metric Values
+    
+    Note over CR,ArgoCD: Failure Detection
+    Ctrl->>Ctrl: Increment Failure Count
+    alt Failure Threshold Reached
+        Note over CR,ArgoCD: Rollback Phase
+        Ctrl->>ArgoCD: Sync to Previous Version
+        ArgoCD-->>Ctrl: Sync Status
+        Ctrl->>CR: Update Status (Rollback Success)
+    else Healthy Response
+        Ctrl->>Ctrl: Reset Failure Count
+        Ctrl->>CR: Update Status (Healthy)
+    end
+    
+    Note over CR,ArgoCD: Continuous Monitoring
+    Ctrl->>Ctrl: Schedule Next Check
+```
+
+Built-in Probes Response:
+Pods start with bad config
+Health checks fail (can't connect to DB)
+Kubernetes restarts pods indefinitely
+Same bad config keeps getting deployed
+Service stays down until manual intervention
+Our Controller Response:
+Detects consecutive failures (configurable threshold)
+Triggers ArgoCD rollback to previous working version
+Monitors rollback success and reports status
+Integrates with external systems for notifications
+
+livenessProbe:   # Restarts pod when health check fails
+readinessProbe:  # Removes pod from service when not ready
+startupProbe:    # Delays other probes during startup
+
 ## Architecture
 
 The controller consists of two main components:
@@ -350,38 +445,6 @@ make undeploy
 # Delete kind cluster
 kind delete cluster --name config-controller
 ```
-
-## Interview Showcase Value
-
-This controller demonstrates:
-
-### Technical Depth
-- **Custom Resource Definitions (CRDs)** with comprehensive validation
-- **Controller-runtime** reconciliation patterns and best practices
-- **Prometheus integration** for metrics-based health monitoring
-- **External system integration** (AWS Lambda, webhooks, GitOps)
-- **RBAC and security** considerations
-
-### Real-World Problem Solving
-- Addresses configuration rollback automation pain points
-- Shows understanding of SRE practices and incident response
-- Demonstrates GitOps and infrastructure automation knowledge
-- Integrates with monitoring and observability systems
-
-### Production-Ready Features
-- Proper error handling and status management
-- Kubernetes API conventions and condition types
-- Finalizer-based cleanup and resource lifecycle management
-- Structured logging and observability
-- Comprehensive validation and schema enforcement
-
-### Advanced Kubernetes Knowledge
-- Controller patterns and reconciliation loops
-- Custom resource lifecycle management
-- Integration with core Kubernetes APIs
-- Understanding of operator development best practices
-
-This project effectively demonstrates advanced Kubernetes knowledge beyond basic resource management, showing controller development skills that are highly valued for SRE and platform engineering roles.
 
 ## License
 
