@@ -1,0 +1,364 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.18.0
+  name: configrollbacks.config.rahulkshinde.dev
+spec:
+  group: config.rahulkshinde.dev
+  names:
+    kind: ConfigRollback
+    listKind: ConfigRollbackList
+    plural: configrollbacks
+    singular: configrollback
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: ConfigRollback is the Schema for the configrollbacks API
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: spec defines the desired state of ConfigRollback
+            properties:
+              enabled:
+                default: true
+                description: enabled allows temporarily disabling the rollback monitoring
+                type: boolean
+              healthChecks:
+                description: healthChecks defines the health monitoring configuration
+                properties:
+                  failureThreshold:
+                    default: 3
+                    description: failureThreshold defines how many consecutive failures
+                      trigger a rollback
+                    format: int32
+                    maximum: 10
+                    minimum: 1
+                    type: integer
+                  httpHealthCheck:
+                    description: httpHealthCheck defines HTTP-based health checking
+                    properties:
+                      expectedStatusCode:
+                        default: 200
+                        description: expectedStatusCode defines the expected HTTP
+                          status code for healthy response
+                        format: int32
+                        maximum: 299
+                        minimum: 200
+                        type: integer
+                      headers:
+                        additionalProperties:
+                          type: string
+                        description: headers to include in the health check request
+                        type: object
+                      path:
+                        description: path for the health check endpoint
+                        type: string
+                    required:
+                    - path
+                    type: object
+                  prometheusHealthCheck:
+                    description: prometheusHealthCheck defines Prometheus metrics-based
+                      health checking
+                    properties:
+                      operator:
+                        default: gt
+                        description: operator defines how to compare the metric value
+                          with threshold (>, <, >=, <=, ==, !=)
+                        enum:
+                        - gt
+                        - lt
+                        - gte
+                        - lte
+                        - eq
+                        - ne
+                        type: string
+                      prometheusURL:
+                        description: prometheusURL is the URL of the Prometheus server
+                        type: string
+                      query:
+                        description: query is the PromQL query to evaluate service
+                          health
+                        type: string
+                      threshold:
+                        description: threshold defines the threshold value for the
+                          metric (as string to avoid float precision issues)
+                        type: string
+                    required:
+                    - prometheusURL
+                    - query
+                    - threshold
+                    type: object
+                  timeoutSeconds:
+                    default: 10
+                    description: timeoutSeconds defines the timeout for each health
+                      check
+                    format: int32
+                    maximum: 300
+                    minimum: 1
+                    type: integer
+                type: object
+              monitoringInterval:
+                default: 30
+                description: monitoringInterval defines how often to perform health
+                  checks (in seconds)
+                format: int32
+                maximum: 3600
+                minimum: 10
+                type: integer
+              rollbackConfig:
+                description: rollbackConfig defines how rollbacks should be executed
+                properties:
+                  gitOpsConfig:
+                    description: gitOpsConfig defines GitOps-based rollback configuration
+                    properties:
+                      branch:
+                        default: main
+                        description: branch is the Git branch to use
+                        type: string
+                      filePath:
+                        description: filePath is the path to the configuration file
+                          to modify
+                        type: string
+                      previousVersion:
+                        description: previousVersion is the version to rollback to
+                        type: string
+                      repository:
+                        description: repository is the Git repository URL
+                        type: string
+                    required:
+                    - filePath
+                    - previousVersion
+                    - repository
+                    type: object
+                  lambdaConfig:
+                    description: lambdaConfig defines AWS Lambda-based rollback configuration
+                    properties:
+                      functionName:
+                        description: functionName is the AWS Lambda function name
+                        type: string
+                      payload:
+                        description: payload is the JSON payload to send to Lambda
+                        type: string
+                      region:
+                        description: region is the AWS region
+                        type: string
+                    required:
+                    - functionName
+                    - region
+                    type: object
+                  maxRollbackAttempts:
+                    default: 1
+                    description: maxRollbackAttempts defines maximum number of rollback
+                      attempts
+                    format: int32
+                    maximum: 5
+                    minimum: 1
+                    type: integer
+                  rollbackType:
+                    description: rollbackType defines the type of rollback mechanism
+                    enum:
+                    - webhook
+                    - lambda
+                    - gitops
+                    type: string
+                  webhookConfig:
+                    description: webhookConfig defines webhook-based rollback configuration
+                    properties:
+                      headers:
+                        additionalProperties:
+                          type: string
+                        description: headers to include in the webhook request
+                        type: object
+                      method:
+                        default: POST
+                        description: method is the HTTP method to use (POST, PUT,
+                          PATCH)
+                        enum:
+                        - POST
+                        - PUT
+                        - PATCH
+                        type: string
+                      payload:
+                        description: payload is the JSON payload to send
+                        type: string
+                      url:
+                        description: url is the webhook URL to call for rollback
+                        type: string
+                    required:
+                    - url
+                    type: object
+                required:
+                - rollbackType
+                type: object
+              targetService:
+                description: targetService specifies the service to monitor for health
+                  checks
+                properties:
+                  name:
+                    description: name of the service to monitor
+                    type: string
+                  namespace:
+                    description: namespace of the service
+                    type: string
+                  port:
+                    description: port to use for health checks
+                    format: int32
+                    maximum: 65535
+                    minimum: 1
+                    type: integer
+                required:
+                - name
+                - namespace
+                - port
+                type: object
+            required:
+            - healthChecks
+            - rollbackConfig
+            - targetService
+            type: object
+          status:
+            description: status defines the observed state of ConfigRollback
+            properties:
+              conditions:
+                description: |-
+                  conditions represent the current state of the ConfigRollback resource.
+                  Each condition has a unique type and reflects the status of a specific aspect of the resource.
+
+                  Standard condition types include:
+                  - "Available": the resource is fully functional
+                  - "Progressing": the resource is being created or updated
+                  - "Degraded": the resource failed to reach or maintain its desired state
+
+                  The status of each condition is one of True, False, or Unknown.
+                items:
+                  description: Condition contains details for one aspect of the current
+                    state of this API Resource.
+                  properties:
+                    lastTransitionTime:
+                      description: |-
+                        lastTransitionTime is the last time the condition transitioned from one status to another.
+                        This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.
+                      format: date-time
+                      type: string
+                    message:
+                      description: |-
+                        message is a human readable message indicating details about the transition.
+                        This may be an empty string.
+                      maxLength: 32768
+                      type: string
+                    observedGeneration:
+                      description: |-
+                        observedGeneration represents the .metadata.generation that the condition was set based upon.
+                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+                        with respect to the current state of the instance.
+                      format: int64
+                      minimum: 0
+                      type: integer
+                    reason:
+                      description: |-
+                        reason contains a programmatic identifier indicating the reason for the condition's last transition.
+                        Producers of specific condition types may define expected values and meanings for this field,
+                        and whether the values are considered a guaranteed API.
+                        The value should be a CamelCase string.
+                        This field may not be empty.
+                      maxLength: 1024
+                      minLength: 1
+                      pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                      type: string
+                    status:
+                      description: status of the condition, one of True, False, Unknown.
+                      enum:
+                      - "True"
+                      - "False"
+                      - Unknown
+                      type: string
+                    type:
+                      description: type of condition in CamelCase or in foo.example.com/CamelCase.
+                      maxLength: 316
+                      pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - message
+                  - reason
+                  - status
+                  - type
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - type
+                x-kubernetes-list-type: map
+              consecutiveFailures:
+                description: consecutiveFailures tracks the number of consecutive
+                  health check failures
+                format: int32
+                type: integer
+              healthCheckStatus:
+                description: healthCheckStatus indicates the current health status
+                  of the monitored service
+                enum:
+                - Healthy
+                - Unhealthy
+                - Unknown
+                type: string
+              lastHealthCheckTime:
+                description: lastHealthCheckTime indicates when the last health check
+                  was performed
+                format: date-time
+                type: string
+              lastRollbackMessage:
+                description: lastRollbackMessage provides details about the last rollback
+                  attempt
+                type: string
+              lastRollbackTime:
+                description: lastRollbackTime indicates when the last rollback was
+                  attempted
+                format: date-time
+                type: string
+              observedGeneration:
+                description: observedGeneration reflects the generation of the most
+                  recently observed ConfigRollback
+                format: int64
+                type: integer
+              rollbackAttempts:
+                description: rollbackAttempts tracks the number of rollback attempts
+                  for the current failure
+                format: int32
+                type: integer
+              rollbackStatus:
+                description: rollbackStatus indicates the status of the most recent
+                  rollback attempt
+                enum:
+                - Success
+                - Failed
+                - InProgress
+                - NotAttempted
+                type: string
+            type: object
+        required:
+        - spec
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

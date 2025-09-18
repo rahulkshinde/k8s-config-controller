@@ -1,0 +1,36 @@
+apiVersion: config.rahulkshinde.dev/v1alpha1
+kind: ConfigRollback
+metadata:
+  labels:
+    app.kubernetes.io/name: k8s-config-controller
+    app.kubernetes.io/managed-by: kustomize
+  name: configrollback-sample
+  namespace: default
+spec:
+  enabled: true
+  monitoringInterval: 30
+  
+  targetService:
+    name: my-app
+    namespace: default
+    port: 8080
+  
+  healthChecks:
+    failureThreshold: 3
+    timeoutSeconds: 10
+    httpHealthCheck:
+      path: /health
+      expectedStatusCode: 200
+      headers:
+        User-Agent: "ConfigRollback-Controller/1.0"
+  
+  rollbackConfig:
+    rollbackType: webhook
+    maxRollbackAttempts: 2
+    webhookConfig:
+      url: "https://api.example.com/rollback"
+      method: "POST"
+      headers:
+        Authorization: "Bearer token123"
+        Content-Type: "application/json"
+      payload: '{"action": "rollback", "service": "my-app"}'

@@ -1,0 +1,34 @@
+apiVersion: config.rahulkshinde.dev/v1alpha1
+kind: ConfigRollback
+metadata:
+  labels:
+    app.kubernetes.io/name: k8s-config-controller
+    app.kubernetes.io/managed-by: kustomize
+  name: configrollback-prometheus-sample
+  namespace: default
+spec:
+  enabled: true
+  monitoringInterval: 60
+  
+  targetService:
+    name: payment-service
+    namespace: production
+    port: 9090
+  
+  healthChecks:
+    failureThreshold: 2
+    timeoutSeconds: 15
+    prometheusHealthCheck:
+      prometheusURL: "http://prometheus.monitoring.svc.cluster.local:9090"
+      query: "rate(http_requests_total{service='payment-service',status=~'5..'}[5m])"
+      threshold: "0.05"
+      operator: "lt"
+  
+  rollbackConfig:
+    rollbackType: gitops
+    maxRollbackAttempts: 1
+    gitOpsConfig:
+      repository: "https://github.com/company/k8s-configs.git"
+      branch: "main"
+      filePath: "apps/payment-service/deployment.yaml"
+      previousVersion: "v1.2.3"
