@@ -1,6 +1,6 @@
 # Kubernetes Configuration Rollback Controller
 
-A production-ready Kubernetes operator that monitors service health and automatically triggers configuration rollbacks when issues are detected. Built with kubebuilder for advanced Kubernetes operator development.
+A Kubernetes operator that monitors service health and automatically triggers configuration rollbacks when issues are detected. Built with kubebuilder for advanced Kubernetes operator development.
 
 ## Overview
 
@@ -90,21 +90,40 @@ sequenceDiagram
     Ctrl->>Ctrl: Schedule Next Check
 ```
 
-Built-in Probes Response:
-Pods start with bad config
-Health checks fail (can't connect to DB)
-Kubernetes restarts pods indefinitely
-Same bad config keeps getting deployed
-Service stays down until manual intervention
-Our Controller Response:
-Detects consecutive failures (configurable threshold)
-Triggers ArgoCD rollback to previous working version
-Monitors rollback success and reports status
-Integrates with external systems for notifications
+## Why This Controller is Needed vs Built-in Kubernetes Probes
 
-livenessProbe:   # Restarts pod when health check fails
-readinessProbe:  # Removes pod from service when not ready
-startupProbe:    # Delays other probes during startup
+### **Kubernetes Built-in Probes Limitations:**
+
+| Probe Type | Description |
+|------------|-------------|
+| `livenessProbe` | Restarts pod when health check fails |
+| `readinessProbe` | Removes pod from service when not ready |
+| `startupProbe` | Delays other probes during startup |
+
+### **Problem Scenario: Bad Configuration Deployment**
+
+#### **Built-in Probes Response:**
+1. **Pods start** with bad config
+2. **Health checks fail** (can't connect to DB)
+3. **Kubernetes restarts pods** indefinitely
+4. **Same bad config** keeps getting deployed
+5. **Service stays down** until manual intervention
+
+#### **Our Controller Response:**
+1. **Detects consecutive failures** (configurable threshold)
+2. **Triggers ArgoCD rollback** to previous working version
+3. **Monitors rollback success** and reports status
+4. **Integrates with external systems** for notifications
+
+### **Key Differences:**
+
+| Built-in Probes | Our Controller |
+|-----------------|----------------|
+| Reactive (restart failed pods) | Proactive (prevent outages) |
+| Pod-level only | Application-level intelligence |
+| No configuration rollback | Automated rollback capability |
+| Limited to basic health checks | Prometheus metrics integration |
+| No external system integration | Webhook/Lambda/ArgoCD integration |
 
 ## Architecture
 
